@@ -1,0 +1,4 @@
+.amo-signing.env
+web-ext-artifacts/
+zen-extension/.amo-upload-uuid
+ryoku-palette-bridge

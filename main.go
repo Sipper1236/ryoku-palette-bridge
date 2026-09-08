@@ -11,11 +11,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"syscall"
 	"time"
 	"unsafe"
 )
+
+var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 type snapshot struct {
 	data    []byte
@@ -39,8 +42,13 @@ func validatePalette(data []byte) ([]byte, error) {
 	}
 	for _, role := range []string{"primary", "surface", "onSurface"} {
 		color := palette[role]
-		if len(color) != 7 || color[0] != '#' {
+		if !hexColor.MatchString(color) {
 			return nil, fmt.Errorf("palette role %q is missing or invalid", role)
+		}
+	}
+	for role, color := range palette {
+		if !hexColor.MatchString(color) {
+			return nil, fmt.Errorf("palette role %q has invalid color %q", role, color)
 		}
 	}
 	compact := new(bytes.Buffer)
@@ -121,6 +129,10 @@ func (h *paletteHub) eventsHandler(w http.ResponseWriter, r *http.Request) {
 	corsHeaders(w.Header())
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	flusher, ok := w.(http.Flusher)

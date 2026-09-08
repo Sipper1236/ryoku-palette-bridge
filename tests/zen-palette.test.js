@@ -10,7 +10,7 @@ const palette = {
 };
 const colors = paletteToTheme(palette).colors;
 assert.equal(colors.frame, palette.surface);
-assert.equal(colors.toolbar_field_focus_border, palette.primary);
+assert.equal(colors.toolbar_field_border_focus, palette.primary);
 assert.equal(colors.toolbar_field_highlight, palette.primaryContainer);
 assert.equal(colors.sidebar_highlight_text, palette.onPrimaryContainer);
 console.log("PASS: Zen palette maps onto live Gecko theme colors");

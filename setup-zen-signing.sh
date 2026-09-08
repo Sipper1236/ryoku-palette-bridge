@@ -225,6 +225,5 @@ say "Zen will show its normal extension-install confirmation."
 zen-browser "$signed_xpi" >/dev/null 2>&1 &
 step "In Zen, click Add, then approve the extension."
 pause "Press Enter after Zen says the extension was added."
-note "Return to Codex and say: signed extension installed"
 
 finish

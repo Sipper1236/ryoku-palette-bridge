@@ -37,6 +37,23 @@ func TestInvalidPaletteDoesNotReplaceCurrent(t *testing.T) {
 	}
 }
 
+func TestInvalidHexInAnyRoleIsRejected(t *testing.T) {
+	hub := newPaletteHub()
+	invalid := `{"primary":"#112233","surface":"#010203","onSurface":"#fefefe","tertiary":"#zzzzzz"}`
+	if err := hub.publish([]byte(invalid)); err == nil {
+		t.Fatal("invalid optional palette role was accepted")
+	}
+}
+
+func TestEventStreamRejectsNonGet(t *testing.T) {
+	hub := newPaletteHub()
+	recorder := httptest.NewRecorder()
+	hub.eventsHandler(recorder, httptest.NewRequest(http.MethodPost, "/v1/events", nil))
+	if recorder.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("unexpected response: %d", recorder.Code)
+	}
+}
+
 func TestEventStreamPublishesChanges(t *testing.T) {
 	hub := newPaletteHub()
 	if err := hub.publish([]byte(paletteOne)); err != nil {

@@ -5,15 +5,10 @@ zen_root="${ZEN_CONFIG_ROOT:-${XDG_CONFIG_HOME:-$HOME/.config}/zen}"
 if [[ -n "${ZEN_PROFILE_ROOT:-}" ]]; then
   profile_root="$ZEN_PROFILE_ROOT"
 else
-  profile_path=$(awk -F= '
-    /^\[Profile/ { in_profile=1; path=""; is_default=0; next }
-    /^\[/ { if (in_profile && is_default && path != "") { print path; exit }; in_profile=0 }
-    in_profile && $1 == "Path" { path=$2 }
-    in_profile && $1 == "Default" && $2 == "1" { is_default=1 }
-    END { if (in_profile && is_default && path != "") print path }
-  ' "$zen_root/profiles.ini" | head -n1)
+  profile_path=$(find "$zen_root" -mindepth 2 -maxdepth 2 -name .parentlock -printf '%h\n' -quit)
+  profile_path=${profile_path#"$zen_root/"}
   [[ -n "$profile_path" ]] || {
-    printf 'FAIL: could not identify Zen default profile\n' >&2
+    printf 'FAIL: could not identify the running Zen profile\n' >&2
     exit 1
   }
   profile_root="$zen_root/$profile_path"

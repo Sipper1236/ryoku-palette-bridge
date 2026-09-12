@@ -8,6 +8,7 @@ config_root="$test_root/config"
 fake_bin="$test_root/bin"
 profile_root="$config_root/zen/test.default"
 state_file="$test_root/spicetify-extensions"
+state_root="$test_root/state"
 mkdir -p "$fake_bin" "$config_root/matugen" "$config_root/vesktop/settings" "$profile_root/chrome"
 
 printf '[config]\n\n[templates.existing]\ninput_path = "keep"\noutput_path = "keep"\n' \
@@ -31,6 +32,7 @@ chmod +x "$fake_bin/ryoku" "$fake_bin/ryogami" "$fake_bin/spicetify"
 
 for _ in 1 2; do
   XDG_CONFIG_HOME="$config_root" \
+  XDG_STATE_HOME="$state_root" \
   ZEN_PROFILE_ROOT="$profile_root" \
   FAKE_SPICETIFY_STATE="$state_file" \
   PATH="$fake_bin:$PATH" \
@@ -53,4 +55,25 @@ cmp "$project_root/vesktop/midnight-ryoku.theme.css" \
 jq -e '.useQuickCss == true and (.enabledThemes | map(select(. == "midnight-ryoku.theme.css")) | length == 1)' \
   "$config_root/vesktop/settings/settings.json" >/dev/null
 
-printf 'PASS: integration installer is idempotent and preserves existing configuration\n'
+for integration in spotify vesktop zen; do
+  XDG_CONFIG_HOME="$config_root" \
+  XDG_STATE_HOME="$state_root" \
+  FAKE_SPICETIFY_STATE="$state_file" \
+  PATH="$fake_bin:$PATH" \
+    "$project_root/remove-integrations.sh" "--$integration"
+done
+
+[[ ! -e "$config_root/spicetify/Extensions/ryoku-wallpaper-colors.js" ]]
+[[ ! -e "$overlay/templates/vesktop-colors.css" ]]
+[[ ! -e "$overlay/templates/zen.css" ]]
+[[ ! -e "$config_root/vesktop/themes/midnight-ryoku.theme.css" ]]
+! grep -Fq '[templates.vesktop]' "$overlay/apps.toml"
+! grep -Fq '[templates.zen]' "$overlay/apps.toml"
+grep -Fq '[templates.existing]' "$overlay/apps.toml"
+grep -Fq '@import "existing.css";' "$profile_root/chrome/userChrome.css"
+! grep -Fq '@import "ryoku-colors.css";' "$profile_root/chrome/userChrome.css"
+grep -Fq 'user_pref("existing", true);' "$profile_root/user.js"
+! grep -Fq 'toolkit.legacyUserProfileCustomizations.stylesheets' "$profile_root/user.js"
+[[ ! -s "$state_root/ryoku/palette-bridge/owned-files.tsv" ]]
+
+printf 'PASS: integration setup and removal are idempotent and preserve existing configuration\n'

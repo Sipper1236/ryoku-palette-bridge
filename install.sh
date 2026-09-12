@@ -8,6 +8,7 @@ unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 install -d "$bin_dir" "$unit_dir"
 go build -trimpath -ldflags='-s -w' -o "$bin_dir/ryoku-palette-bridge" "$project_root"
 install -m 0755 "$project_root/doctor.sh" "$bin_dir/ryoku-palette-bridge-doctor"
+install -m 0755 "$project_root/remove-integrations.sh" "$bin_dir/ryoku-palette-bridge-remove-integrations"
 install -m 0644 "$project_root/packaging/systemd/ryoku-palette-bridge.service" \
   "$unit_dir/ryoku-palette-bridge.service"
 systemctl --user daemon-reload
@@ -18,5 +19,4 @@ for legacy_unit in ryoku-spicetify-palette.service spiceflow.service; do
     printf 'Disabled legacy %s (its unit file was preserved)\n' "$legacy_unit"
   fi
 done
-systemctl --user enable --now ryoku-palette-bridge.service
-printf 'Installed and started ryoku-palette-bridge.service\n'
+printf 'Installed ryoku-palette-bridge.service (enable it when ready).\n'

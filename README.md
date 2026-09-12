@@ -69,12 +69,16 @@ ryoku-shell theme Wallpaper
 ryoku-palette-bridge-doctor
 ```
 
-The core installer builds a stripped binary in `~/.local/bin`, installs and
-starts `ryoku-palette-bridge.service`, and safely disables the older
+The core installer builds a stripped binary in `~/.local/bin`, installs
+`ryoku-palette-bridge.service` without enabling it, and safely disables the older
 `ryoku-spicetify-palette.service` and `spiceflow.service` units when present.
 The old unit files are left in place. The installed doctor validates the active
 palette, service, local API, and published colours without requiring every
 supported app to be open.
+
+Enable the bridge from Ryoku's wallpaper settings, or run
+`systemctl --user enable --now ryoku-palette-bridge.service`. Integrations are
+opt-in and can be removed independently with `remove-integrations.sh`.
 
 ## The three integrations
 

@@ -19,6 +19,8 @@ fi
 want_spotify=false
 want_vesktop=false
 want_zen=false
+state_root="${XDG_STATE_HOME:-$HOME/.local/state}/ryoku/palette-bridge"
+ownership_file="$state_root/owned-files.tsv"
 
 usage() {
   printf 'Usage: %s --all | [--spotify] [--vesktop] [--zen]\n' "${0##*/}"
@@ -52,6 +54,18 @@ prepare_matugen_overlay() {
   fi
 }
 
+record_owned() {
+  local integration="$1" path="$2" temporary
+  install -d "$state_root"
+  temporary=$(mktemp)
+  if [[ -f "$ownership_file" ]]; then
+    awk -F '\t' -v app="$integration" -v path="$path" '!($1 == app && $2 == path)' "$ownership_file" > "$temporary"
+  fi
+  printf '%s\t%s\n' "$integration" "$path" >> "$temporary"
+  install -m 0600 "$temporary" "$ownership_file"
+  rm -f "$temporary"
+}
+
 set_matugen_section() {
   local section="$1" input_path="$2" output_path="$3" temporary
   temporary=$(mktemp)
@@ -74,6 +88,7 @@ if $want_spotify; then
   install -d "$config_root/spicetify/Extensions"
   install -m 0644 "$project_root/spicetify/ryoku-wallpaper-colors.js" \
     "$config_root/spicetify/Extensions/ryoku-wallpaper-colors.js"
+  record_owned spotify "$config_root/spicetify/Extensions/ryoku-wallpaper-colors.js"
   if ! spicetify config extensions | grep -Fxq 'ryoku-wallpaper-colors.js'; then
     spicetify config extensions ryoku-wallpaper-colors.js
   fi
@@ -87,12 +102,14 @@ if $want_vesktop; then
   [[ -f "$settings" ]] || { printf 'Vesktop settings not found: %s\n' "$settings" >&2; exit 1; }
   prepare_matugen_overlay
   install -m 0644 "$project_root/templates/vesktop-colors.css" "$overlay_root/templates/vesktop-colors.css"
+  record_owned vesktop "$overlay_root/templates/vesktop-colors.css"
   set_matugen_section templates.vesktop \
     "$matugen_template_root/vesktop-colors.css" \
     "$vesktop_quick_css"
   install -d "$config_root/vesktop/themes"
   install -m 0644 "$project_root/vesktop/midnight-ryoku.theme.css" \
     "$config_root/vesktop/themes/midnight-ryoku.theme.css"
+  record_owned vesktop "$config_root/vesktop/themes/midnight-ryoku.theme.css"
   temporary=$(mktemp)
   jq '.useQuickCss = true | .enabledThemes = ((.enabledThemes // []) | if index("midnight-ryoku.theme.css") then . else . + ["midnight-ryoku.theme.css"] end)' \
     "$settings" > "$temporary"
@@ -124,6 +141,7 @@ if $want_zen; then
   }
   prepare_matugen_overlay
   install -m 0644 "$project_root/templates/zen.css" "$overlay_root/templates/zen.css"
+  record_owned zen "$overlay_root/templates/zen.css"
   if [[ "$profile_root" == "$HOME/"* ]]; then
     profile_output="~${profile_root#"$HOME"}/chrome/ryoku-colors.css"
   else
@@ -140,12 +158,14 @@ if $want_zen; then
     install -m 0644 "$temporary" "$user_chrome"
     rm -f "$temporary"
   fi
+  record_owned zen "$user_chrome"
   user_js="$profile_root/user.js"
   touch "$user_js"
   temporary=$(mktemp)
   grep -v 'user_pref("toolkit\.legacyUserProfileCustomizations\.stylesheets"' "$user_js" > "$temporary" || true
   printf 'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);\n' >> "$temporary"
   install -m 0644 "$temporary" "$user_js"
+  record_owned zen "$user_js"
   rm -f "$temporary"
   printf 'Installed Zen profile wiring. Sign/install zen-extension separately, then restart Zen once.\n'
 fi

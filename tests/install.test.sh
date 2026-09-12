@@ -47,12 +47,13 @@ PATH="$fake_bin:$PATH" \
 
 test -x "$test_root/home/.local/bin/ryoku-palette-bridge"
 test -x "$test_root/home/.local/bin/ryoku-palette-bridge-doctor"
+test -x "$test_root/home/.local/bin/ryoku-palette-bridge-remove-integrations"
 cmp "$project_root/doctor.sh" "$test_root/home/.local/bin/ryoku-palette-bridge-doctor"
 cmp "$project_root/packaging/systemd/ryoku-palette-bridge.service" \
   "$test_root/home/.config/systemd/user/ryoku-palette-bridge.service"
 grep -Fxq -- '--user daemon-reload' "$systemctl_log"
 grep -Fxq -- '--user disable --now ryoku-spicetify-palette.service' "$systemctl_log"
 grep -Fxq -- '--user disable --now spiceflow.service' "$systemctl_log"
-grep -Fxq -- '--user enable --now ryoku-palette-bridge.service' "$systemctl_log"
+! grep -Fq -- '--user enable --now ryoku-palette-bridge.service' "$systemctl_log"
 
-printf 'PASS: core installer migrates legacy services to the canonical unit\n'
+printf 'PASS: core installer migrates legacy services and leaves the canonical unit opt-in\n'

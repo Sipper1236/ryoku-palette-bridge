@@ -9,10 +9,15 @@ const properties = new Map();
 const elements = new Map();
 const streams = [];
 const events = [];
+const timers = [];
 class EventSource {
   constructor(url) {
     this.url = url;
+    this.closed = false;
     streams.push(this);
+  }
+  close() {
+    this.closed = true;
   }
 }
 class CustomEvent {
@@ -28,11 +33,17 @@ const document = {
   head: { appendChild: element => elements.set(element.id, element) },
 };
 const window = { dispatchEvent: event => events.push(event) };
+const setTimeout = (callback, delay) => {
+  timers.push({ callback, delay });
+  return timers.length;
+};
 const source = fs.readFileSync(
   path.join(__dirname, "..", "spicetify", "ryoku-wallpaper-colors.js"),
   "utf8",
 );
-vm.runInNewContext(source, { window, document, EventSource, CustomEvent, JSON, Object });
+vm.runInNewContext(source, {
+  window, document, EventSource, CustomEvent, JSON, Object, setTimeout,
+});
 
 assert.equal(streams.length, 1);
 assert.equal(streams[0].url, "http://127.0.0.1:47616/v1/events");
@@ -53,4 +64,12 @@ assert.equal(properties.get("--spice-rgb-button"), "17,34,51");
 assert.equal(properties.get("--spice-main"), palette.background);
 assert.equal(properties.get("--spice-primary"), palette.primary);
 assert.equal(events.at(-1).type, "ryoku-palette-changed");
-console.log("PASS: Spotify extension maps Ryoku roles and uses one local SSE stream");
+
+streams[0].onerror();
+assert.equal(streams[0].closed, true);
+assert.equal(timers.length, 1);
+assert.equal(timers[0].delay, 1000);
+timers[0].callback();
+assert.equal(streams.length, 2);
+assert.equal(streams[1].url, "http://127.0.0.1:47616/v1/events");
+console.log("PASS: Spotify extension maps Ryoku roles and reconnects its local SSE stream");

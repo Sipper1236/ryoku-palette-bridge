@@ -102,11 +102,22 @@
     } catch (_) {}
   }
 
-  // EventSource reconnects automatically if the local bridge restarts.
-  const events = new EventSource(endpoint);
-  events.onmessage = (event) => {
-    try {
-      update(JSON.parse(event.data));
-    } catch (_) {}
-  };
+  let reconnectTimer = null;
+  function connect() {
+    const events = new EventSource(endpoint);
+    events.onmessage = (event) => {
+      try {
+        update(JSON.parse(event.data));
+      } catch (_) {}
+    };
+    events.onerror = () => {
+      events.close();
+      if (reconnectTimer !== null) return;
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, 1000);
+    };
+  }
+  connect();
 })();

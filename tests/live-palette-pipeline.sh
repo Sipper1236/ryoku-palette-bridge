@@ -24,11 +24,12 @@ primary=$(jq -er '.primary' "$palette")
   fail 'palette bridge is not publishing the active palette'
 
 vesktop_section=$(section templates.vesktop "$apps")
-rg -Fq 'input_path = "~/.config/matugen/templates/vesktop-colors.css"' <<<"$vesktop_section" &&
-  rg -Fq 'output_path = "~/.config/vesktop/settings/quickCss.css"' <<<"$vesktop_section" ||
+if ! rg -Fq 'input_path = "~/.config/matugen/templates/vesktop-colors.css"' <<<"$vesktop_section" ||
+    ! rg -Fq 'output_path = "~/.config/vesktop/settings/quickCss.css"' <<<"$vesktop_section"; then
   fail 'Vesktop Matugen registration is missing or writes to the themes directory'
+fi
 vesktop_primary=$(sed -n 's/.*--accent-2:[[:space:]]*\(#[0-9a-fA-F]\{6\}\).*/\1/p' "$quick_css" | head -n1)
-[[ ${vesktop_primary,,} == ${primary,,} ]] ||
+[[ ${vesktop_primary,,} == "${primary,,}" ]] ||
   fail "Vesktop accent is stale ($vesktop_primary, expected $primary)"
 
 active_profile=$(find "$zen_root" -mindepth 2 -maxdepth 2 -name .parentlock -printf '%h\n' -quit)

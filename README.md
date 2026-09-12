@@ -66,13 +66,15 @@ healthy:
 
 ```bash
 ryoku-shell theme Wallpaper
-curl --fail http://127.0.0.1:47616/healthz
+ryoku-palette-bridge-doctor
 ```
 
 The core installer builds a stripped binary in `~/.local/bin`, installs and
 starts `ryoku-palette-bridge.service`, and safely disables the older
-`ryoku-spicetify-palette.service` when it is present. The old unit file is left
-in place.
+`ryoku-spicetify-palette.service` and `spiceflow.service` units when present.
+The old unit files are left in place. The installed doctor validates the active
+palette, service, local API, and published colours without requiring every
+supported app to be open.
 
 ## The three integrations
 
@@ -153,7 +155,9 @@ go vet ./...
 node tests/zen-palette.test.js
 node tests/spicetify-palette.test.js
 node tests/zen-theme-schema.test.js
+./tests/install.test.sh
 ./tests/install-integrations.test.sh
+./tests/doctor.test.sh
 npx --yes web-ext@latest lint --source-dir zen-extension
 ```
 

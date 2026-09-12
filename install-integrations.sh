@@ -7,7 +7,10 @@ overlay_root="$config_root/ryoku/user_edits/matugen"
 overlay_apps="$overlay_root/apps.toml"
 live_apps="$config_root/matugen/apps.toml"
 if [[ "$config_root" == "$HOME/.config" ]]; then
+  # Literal paths written into apps.toml; Matugen expands the tilde.
+  # shellcheck disable=SC2088
   matugen_template_root='~/.config/matugen/templates'
+  # shellcheck disable=SC2088
   vesktop_quick_css='~/.config/vesktop/settings/quickCss.css'
 else
   matugen_template_root="$config_root/matugen/templates"

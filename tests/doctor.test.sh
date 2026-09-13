@@ -19,6 +19,7 @@ EOF
 
 cat > "$fake_bin/curl" <<'EOF'
 #!/usr/bin/env bash
+[[ " $* " == *' --connect-timeout 2 '* && " $* " == *' --max-time 5 '* ]] || exit 1
 case ${*: -1} in
   */healthz) printf 'ok\n' ;;
   */v1/palette) cat "$FAKE_PALETTE" ;;

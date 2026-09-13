@@ -80,6 +80,11 @@ Enable the bridge from Ryoku's wallpaper settings, or run
 `systemctl --user enable --now ryoku-palette-bridge.service`. Integrations are
 opt-in and can be removed independently with `remove-integrations.sh`.
 
+The installer can be launched from any working directory. The daemon reads
+`$XDG_CACHE_HOME/ryoku/colors.json` when set, otherwise
+`~/.cache/ryoku/colors.json`; `--palette` overrides that location. Health checks
+time out after five seconds per request if the local endpoint stops responding.
+
 ## The three integrations
 
 ### Spotify

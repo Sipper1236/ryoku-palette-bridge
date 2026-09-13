@@ -233,7 +233,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	palette := flag.String("palette", filepath.Join(home, ".cache/ryoku/colors.json"), "palette JSON path")
+	cache := os.Getenv("XDG_CACHE_HOME")
+	if cache == "" {
+		cache = filepath.Join(home, ".cache")
+	}
+	palette := flag.String("palette", filepath.Join(cache, "ryoku/colors.json"), "palette JSON path")
 	listen := flag.String("listen", "127.0.0.1:47616", "HTTP listen address")
 	flag.Parse()
 

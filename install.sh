@@ -6,7 +6,7 @@ bin_dir="$HOME/.local/bin"
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 install -d "$bin_dir" "$unit_dir"
-go build -trimpath -ldflags='-s -w' -o "$bin_dir/ryoku-palette-bridge" "$project_root"
+(cd "$project_root" && go build -trimpath -ldflags='-s -w' -o "$bin_dir/ryoku-palette-bridge" .)
 install -m 0755 "$project_root/doctor.sh" "$bin_dir/ryoku-palette-bridge-doctor"
 install -m 0755 "$project_root/remove-integrations.sh" "$bin_dir/ryoku-palette-bridge-remove-integrations"
 install -m 0644 "$project_root/packaging/systemd/ryoku-palette-bridge.service" \

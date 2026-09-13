@@ -12,6 +12,7 @@ cat > "$fake_bin/go" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 output=
+[[ -f go.mod ]] || { printf 'build started outside the Go module\n' >&2; exit 1; }
 while (($#)); do
   if [[ $1 == -o ]]; then
     output=$2
@@ -39,11 +40,13 @@ fi
 EOF
 chmod +x "$fake_bin/go" "$fake_bin/systemctl"
 
+(cd "$test_root"
 HOME="$test_root/home" \
 XDG_CONFIG_HOME="$test_root/home/.config" \
 FAKE_SYSTEMCTL_LOG="$systemctl_log" \
 PATH="$fake_bin:$PATH" \
   "$project_root/install.sh"
+)
 
 test -x "$test_root/home/.local/bin/ryoku-palette-bridge"
 test -x "$test_root/home/.local/bin/ryoku-palette-bridge-doctor"

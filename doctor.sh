@@ -42,13 +42,13 @@ else
   fail "palette bridge service is inactive"
 fi
 
-if [[ $(curl -fsS "$base_url/healthz" 2>/dev/null) == ok ]]; then
+if [[ $(curl --connect-timeout 2 --max-time 5 -fsS "$base_url/healthz" 2>/dev/null) == ok ]]; then
   ok "health endpoint responds"
 else
   fail "health endpoint is unavailable: $base_url/healthz"
 fi
 
-published=$(curl -fsS "$base_url/v1/palette" 2>/dev/null || true)
+published=$(curl --connect-timeout 2 --max-time 5 -fsS "$base_url/v1/palette" 2>/dev/null || true)
 local_normalized=$(jq -cS . "$palette" 2>/dev/null || true)
 published_normalized=$(jq -cS . <<< "$published" 2>/dev/null || true)
 if [[ -n $local_normalized && $published_normalized == "$local_normalized" ]]; then

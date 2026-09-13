@@ -32,3 +32,14 @@ to a particular callback, so its theme and animation settings were retained.
 The tests establish queue correctness and reduced update work. They do not
 measure frame times in the user's three open apps. Visual latency and stutter
 still need checking after the updated clients are loaded.
+
+## Deployment measurements
+
+Spotify was restarted with the updated extension, and the live pipeline check
+confirmed its SSE connection. Rendering only Vesktop's palette from the current
+Matugen carrier took 75 ms on this machine. The installed Vencord source map
+shows a further 50 ms debounce before QuickCSS is sent to its renderer. These
+are separate observations, not an end-to-end frame-time measurement.
+
+Ryogami's `wallpaper repaint` only republishes the wallpaper surface. It does
+not regenerate Matugen output, so it cannot be used to test palette latency.

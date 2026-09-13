@@ -159,6 +159,8 @@ go vet ./...
 node tests/zen-palette.test.js
 node tests/spicetify-palette.test.js
 node tests/zen-theme-schema.test.js
+node tests/zen-css-variables.test.js
+node tests/zen-updates.test.js
 ./tests/install.test.sh
 ./tests/install-integrations.test.sh
 ./tests/doctor.test.sh

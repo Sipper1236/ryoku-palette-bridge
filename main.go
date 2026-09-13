@@ -74,6 +74,12 @@ func (h *paletteHub) publish(data []byte) error {
 		select {
 		case client <- h.current:
 		default:
+			// A slow client needs the latest palette, not an outdated queued one.
+			select {
+			case <-client:
+			default:
+			}
+			client <- h.current
 		}
 	}
 	return nil
@@ -189,7 +195,7 @@ func watchPalette(path string, reload func() error) error {
 	}
 	defer syscall.Close(fd)
 	dir, name := filepath.Dir(path), filepath.Base(path)
-	_, err = syscall.InotifyAddWatch(fd, dir, syscall.IN_CLOSE_WRITE|syscall.IN_MOVED_TO|syscall.IN_CREATE)
+	_, err = syscall.InotifyAddWatch(fd, dir, syscall.IN_CLOSE_WRITE|syscall.IN_MOVED_TO)
 	if err != nil {
 		return err
 	}
@@ -203,6 +209,7 @@ func watchPalette(path string, reload func() error) error {
 			}
 			return err
 		}
+		changed := false
 		for offset := 0; offset+syscall.SizeofInotifyEvent <= n; {
 			event := (*syscall.InotifyEvent)(unsafe.Pointer(&buffer[offset]))
 			start := offset + syscall.SizeofInotifyEvent
@@ -210,9 +217,12 @@ func watchPalette(path string, reload func() error) error {
 			eventName := string(bytes.TrimRight(buffer[start:end], "\x00"))
 			offset = end
 			if eventName == name {
-				if err := reload(); err != nil {
-					log.Printf("palette update ignored: %v", err)
-				}
+				changed = true
+			}
+		}
+		if changed {
+			if err := reload(); err != nil {
+				log.Printf("palette update ignored: %v", err)
 			}
 		}
 	}

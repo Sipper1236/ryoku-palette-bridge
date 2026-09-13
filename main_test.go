@@ -12,6 +12,34 @@ import (
 const paletteOne = `{"primary":"#112233","surface":"#010203","onSurface":"#fefefe"}`
 const paletteTwo = `{"primary":"#aabbcc","surface":"#101112","onSurface":"#eeeeee"}`
 
+func TestSlowClientReceivesLatestPalette(t *testing.T) {
+	hub := newPaletteHub()
+	updates := make(chan snapshot, 1)
+	hub.clients[updates] = struct{}{}
+	for _, data := range []string{paletteOne, paletteTwo} {
+		if err := hub.publish([]byte(data)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := string((<-updates).data); got != paletteTwo {
+		t.Fatalf("client stuck on stale palette: %s", got)
+	}
+}
+
+func BenchmarkPalettePublish(b *testing.B) {
+	hub := newPaletteHub()
+	for i := 0; i < 3; i++ {
+		hub.clients[make(chan snapshot, 1)] = struct{}{}
+	}
+	palettes := [][]byte{[]byte(paletteOne), []byte(paletteTwo)}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := hub.publish(palettes[i%2]); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestPaletteEndpoint(t *testing.T) {
 	hub := newPaletteHub()
 	if err := hub.publish([]byte(paletteOne)); err != nil {

@@ -162,8 +162,9 @@ if $want_zen; then
   user_js="$profile_root/user.js"
   touch "$user_js"
   temporary=$(mktemp)
-  grep -v 'user_pref("toolkit\.legacyUserProfileCustomizations\.stylesheets"' "$user_js" > "$temporary" || true
+  grep -vE 'user_pref\("(toolkit\.legacyUserProfileCustomizations\.stylesheets|zen\.theme\.disable-lightweight)"' "$user_js" > "$temporary" || true
   printf 'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);\n' >> "$temporary"
+  printf 'user_pref("zen.theme.disable-lightweight", false);\n' >> "$temporary"
   install -m 0644 "$temporary" "$user_js"
   record_owned zen "$user_js"
   rm -f "$temporary"

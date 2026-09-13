@@ -23,7 +23,7 @@ jq -e '.addons[] | select(.id == "ryoku-zen-palette@local" and .active == true a
   exit 1
 }
 for stylesheet in "$template" "$generated"; do
-  rg -q -- '--zen-primary-color: var\(--lwt-' "$stylesheet" || {
+  rg -q -- '--zen-primary-color: var\(--toolbar-field-border-color-focus,' "$stylesheet" || {
     printf 'FAIL: %s does not consume live theme variables\n' "$stylesheet" >&2
     exit 1
   }

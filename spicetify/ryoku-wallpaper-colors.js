@@ -79,6 +79,12 @@
   }
 
   let last = "";
+  const applied = new Map();
+  function setColor(style, name, color) {
+    if (applied.get(name) === color) return;
+    style.setProperty(name, color);
+    applied.set(name, color);
+  }
   function rgb(hex) {
     const value = hex.replace("#", "");
     return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16)).join(",");
@@ -92,11 +98,11 @@
       for (const [name, role] of Object.entries(roles)) {
         const color = palette[role];
         if (!/^#[0-9a-f]{6}$/i.test(color || "")) continue;
-        style.setProperty("--spice-" + name, color);
-        style.setProperty("--spice-rgb-" + name, rgb(color));
+        setColor(style, "--spice-" + name, color);
+        setColor(style, "--spice-rgb-" + name, rgb(color));
       }
       if (/^#[0-9a-f]{6}$/i.test(palette.primary || "")) {
-        style.setProperty("--spice-primary", palette.primary);
+        setColor(style, "--spice-primary", palette.primary);
       }
       window.dispatchEvent(new CustomEvent("ryoku-palette-changed", { detail: palette }));
     } catch (_) {}

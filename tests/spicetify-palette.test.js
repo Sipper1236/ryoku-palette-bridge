@@ -10,6 +10,7 @@ const elements = new Map();
 const streams = [];
 const events = [];
 const timers = [];
+let writes = 0;
 class EventSource {
   constructor(url) {
     this.url = url;
@@ -27,7 +28,7 @@ class CustomEvent {
   }
 }
 const document = {
-  documentElement: { style: { setProperty: (name, value) => properties.set(name, value) } },
+  documentElement: { style: { setProperty: (name, value) => { writes++; properties.set(name, value); } } },
   getElementById: id => elements.get(id) || null,
   createElement: () => ({}),
   head: { appendChild: element => elements.set(element.id, element) },
@@ -64,6 +65,9 @@ assert.equal(properties.get("--spice-rgb-button"), "17,34,51");
 assert.equal(properties.get("--spice-main"), palette.background);
 assert.equal(properties.get("--spice-primary"), palette.primary);
 assert.equal(events.at(-1).type, "ryoku-palette-changed");
+const initialWrites = writes;
+streams[0].onmessage({ data: JSON.stringify({ ...palette, secondary: "#abcdef" }) });
+assert.equal(writes - initialWrites, 2, "one role change only writes its hex and RGB variables");
 
 streams[0].onerror();
 assert.equal(streams[0].closed, true);

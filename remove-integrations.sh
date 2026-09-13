@@ -75,7 +75,7 @@ if [[ -f "$ownership_file" ]]; then
         ;;
       zen:*/user.js)
         temporary=$(mktemp)
-        grep -v 'user_pref("toolkit\.legacyUserProfileCustomizations\.stylesheets", true);' "$path" > "$temporary" || true
+        grep -vE 'user_pref\("(toolkit\.legacyUserProfileCustomizations\.stylesheets", true|zen\.theme\.disable-lightweight", false)\);' "$path" > "$temporary" || true
         install -m 0644 "$temporary" "$path"
         rm -f "$temporary"
         ;;

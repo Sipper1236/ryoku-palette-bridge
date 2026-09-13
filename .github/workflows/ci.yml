@@ -22,6 +22,8 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: node tests/zen-palette.test.js
+      - run: node tests/zen-updates.test.js
+      - run: node tests/zen-css-variables.test.js
       - run: node tests/spicetify-palette.test.js
       - run: node tests/zen-theme-schema.test.js
       - run: bash -n install.sh install-integrations.sh setup-zen-signing.sh tests/*.sh

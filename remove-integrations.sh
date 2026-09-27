@@ -35,6 +35,52 @@ remove_matugen_section() {
   rm -f "$temporary"
 }
 
+remove_vesktop_enabled_signal() {
+  local css="$config_root/vesktop/settings/quickCss.css" temporary
+  [[ -f "$css" ]] || return 0
+  temporary=$(mktemp)
+  awk '
+    $0 == "/* ryoku-palette-bridge:vesktop-enabled-begin */" && !inside { inside=1; next }
+    inside {
+      if ($0 == "/* ryoku-palette-bridge:vesktop-enabled-end */") inside=0
+      next
+    }
+    { print }
+    END { if (inside) exit 1 }
+  ' "$css" > "$temporary" || { rm -f "$temporary"; return 1; }
+  cat "$temporary" > "$css"
+  rm -f "$temporary"
+}
+
+remove_vesktop_palette() {
+  local css="$config_root/vesktop/settings/quickCss.css" temporary legacy_digest
+  [[ -f "$css" ]] || return 0
+  temporary=$(mktemp)
+  # Only a complete, explicitly owned block may be removed. Preserve incomplete
+  # markers verbatim so malformed or user-authored CSS cannot disappear.
+  awk '
+    $0 == "/* ryoku-palette-bridge:begin */" && !inside { inside=1; buffer=$0 ORS; next }
+    inside {
+      buffer=buffer $0 ORS
+      if ($0 == "/* ryoku-palette-bridge:end */") { inside=0; buffer="" }
+      next
+    }
+    { print }
+    END { if (inside) printf "%s", buffer }
+  ' "$css" > "$temporary"
+  # Before ownership markers, Matugen wrote this exact leading template. Match
+  # its entire shape (including static values), allowing only rendered hex colors
+  # to vary. A changed/unknown block is left alone; never delete arbitrary :root.
+  legacy_digest=$(sed -n '1,/^}$/p' "$temporary" |
+    sed -E 's/#[[:xdigit:]]{6}/#000000/g' | sha256sum)
+  if [[ "${legacy_digest%% *}" == 77dc96171961a855d7a08ac36ab306a061155f724f747d5fed76f0b9c35056a2 ]]; then
+    sed '1,/^}$/d' "$temporary" > "$temporary.legacy"
+    mv "$temporary.legacy" "$temporary"
+  fi
+  cat "$temporary" > "$css"
+  rm -f "$temporary"
+}
+
 case "$want" in
   spotify)
     if command -v spicetify >/dev/null; then
@@ -44,6 +90,8 @@ case "$want" in
     ;;
   vesktop)
     remove_matugen_section templates.vesktop
+    remove_vesktop_enabled_signal
+    remove_vesktop_palette
     settings="$config_root/vesktop/settings/settings.json"
     if [[ -f "$settings" ]] && command -v jq >/dev/null; then
       temporary=$(mktemp)

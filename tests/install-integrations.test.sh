@@ -76,4 +76,54 @@ grep -Fq 'user_pref("existing", true);' "$profile_root/user.js"
 ! grep -Fq 'toolkit.legacyUserProfileCustomizations.stylesheets' "$profile_root/user.js"
 [[ ! -s "$state_root/ryoku/palette-bridge/owned-files.tsv" ]]
 
+run_vesktop() {
+  XDG_CONFIG_HOME="$config_root" XDG_STATE_HOME="$state_root" PATH="$fake_bin:$PATH" \
+    "$project_root/$1-integrations.sh" --vesktop
+}
+
+# The menu must keep Ryoku selected, including when upgrading a Midnight setup.
+printf '{"enabledThemes":["custom.theme.css","Ryoku.theme.css","midnight-ryoku.theme.css"]}\n' \
+  > "$config_root/vesktop/settings/settings.json"
+quick_css="$config_root/vesktop/settings/quickCss.css"
+printf ':root { --user-before: red; }\n' > "$test_root/custom-before.css"
+cp "$test_root/custom-before.css" "$quick_css"
+for _ in 1 2; do run_vesktop install; done
+jq -e '.useQuickCss == true and .enabledThemes == ["custom.theme.css", "Ryoku.theme.css"]' \
+  "$config_root/vesktop/settings/settings.json" >/dev/null
+[[ ! -e "$config_root/vesktop/themes/midnight-ryoku.theme.css" ]]
+grep -Fq -- '--ryo-bridge-enabled: 1;' "$overlay/templates/vesktop-colors.css"
+
+printf ':root { --user-after: gold; }\n' > "$test_root/custom-after.css"
+grep -Fq -- '--ryo-bridge-enabled: 1;' "$quick_css"
+sed -E 's/\{\{[^}]+\}\}/#abcdef/g' "$project_root/templates/vesktop-colors.css" >> "$quick_css"
+cat "$test_root/custom-after.css" >> "$quick_css"
+cat "$test_root/custom-before.css" "$test_root/custom-after.css" > "$test_root/expected.css"
+for _ in 1 2; do run_vesktop remove; done
+sed '/^[[:space:]]*$/d' "$test_root/expected.css" > "$test_root/expected-noblank.css"
+sed '/^[[:space:]]*$/d' "$quick_css" > "$test_root/actual-noblank.css"
+cmp "$test_root/expected-noblank.css" "$test_root/actual-noblank.css"
+! grep -Fq -- '--ryo-bridge-enabled: 1;' "$quick_css"
+jq -e '.useQuickCss == true and .enabledThemes == ["custom.theme.css", "Ryoku.theme.css"]' \
+  "$config_root/vesktop/settings/settings.json" >/dev/null
+! grep -Fq '[templates.vesktop]' "$overlay/apps.toml"
+
+# An unmarked palette from the previous release can be safely recognized without
+# treating other user :root blocks as generated content.
+sed -E '/ryoku-palette-bridge:(begin|end)/d; /--ryo-bridge-enabled:/d; s/The selected theme remains loaded in a stable layer/Midnight remains loaded in a stable theme layer/; s/\{\{[^}]+\}\}/#aBc123/g' \
+  "$project_root/templates/vesktop-colors.css" > "$quick_css"
+cat "$test_root/custom-after.css" >> "$quick_css"
+run_vesktop remove
+cmp "$test_root/custom-after.css" "$quick_css"
+
+# Similar-looking but modified legacy content is not ours to delete.
+sed -E '/ryoku-palette-bridge:(begin|end)/d; /--ryo-bridge-enabled:/d; s/The selected theme remains loaded in a stable layer/Midnight remains loaded in a stable theme layer/; s/\{\{[^}]+\}\}/#123456/g; s/--spacing: 12px/--spacing: 13px/' \
+  "$project_root/templates/vesktop-colors.css" > "$quick_css"
+cp "$quick_css" "$test_root/expected.css"
+run_vesktop remove
+cmp "$test_root/expected.css" "$quick_css"
+printf '/* ryoku-palette-bridge:begin */\n:root { --user-color: red; }\n' > "$quick_css"
+cp "$quick_css" "$test_root/expected.css"
+run_vesktop remove
+cmp "$test_root/expected.css" "$quick_css"
+
 printf 'PASS: integration setup and removal are idempotent and preserve existing configuration\n'

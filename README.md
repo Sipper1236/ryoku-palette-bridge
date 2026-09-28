@@ -34,7 +34,7 @@ you were doing. This project treats a new palette as a live event instead.
 | --- | --- | --- |
 | **Zen Browser** | Firefox's native theme API updates the browser chrome; Matugen CSS provides a startup fallback | Restarting Zen for every wallpaper |
 | **Spotify + Spicetify** | An extension updates classic Spicetify variables and modern Encore tokens in place | Renderer reloads and interrupted playback |
-| **Vesktop / Discord** | Matugen changes QuickCSS variables while the Midnight base theme stays loaded | The flash of unthemed Discord between updates |
+| **Vesktop / Discord** | Matugen changes QuickCSS variables while the selected base theme stays loaded | The flash of unthemed Discord between updates |
 
 Underneath, a dependency-free Go daemon watches Ryoku's palette with Linux
 inotify, validates every colour, and publishes changes over a loopback-only
@@ -100,14 +100,27 @@ such as Comfy as well as modern Spotify surfaces.
 
 ### Vesktop / Discord
 
-The Discord integration requires Vesktop with Vencord and `jq`. It installs a
-stable Midnight loader from `vesktop/`, enables QuickCSS, and registers
-`templates/vesktop-colors.css` in Ryoku's durable Matugen overlay.
+Open **Super+W → Ryoku Palette Bridge → Vesktop**. **SET UP** enables
+wallpaper palette following; **REMOVE** disables it. With `Ryoku.theme.css`
+selected, removal returns the theme to its red/gold palette. Setup preserves
+Ryoku and other selected themes, and uses the bundled Midnight loader as a
+fallback when Ryoku is not selected.
 
-The small architectural detail is what makes this integration pleasant:
-Matugen writes only the live palette variables in `settings/quickCss.css`. It
-does not rewrite the loaded theme file, so Vesktop does not briefly fall back
-to Discord's stock appearance when the wallpaper changes.
+The integration requires Vesktop with Vencord, `jq`, Matugen, and Ryoku's
+current Matugen carrier at `$XDG_CACHE_HOME/ryoku/matugen-carrier.json`
+(default: `~/.cache/ryoku/matugen-carrier.json`). Setup renders the current
+palette immediately, enables QuickCSS, and registers
+`templates/vesktop-colors.css` in Ryoku's durable Matugen overlay. Removing
+and setting up again therefore applies the latest colors without waiting for
+a wallpaper change. Setup and removal preserve unrelated QuickCSS content.
+
+If the carrier is missing or invalid, or Matugen cannot render it, setup stops
+before changing the Vesktop integration. Apply a wallpaper through Ryoku to
+regenerate the carrier, confirm Matugen is installed, and retry **SET UP**.
+
+Matugen updates the palette variables in `settings/quickCss.css` while the
+selected theme stays loaded, so palette changes do not require reloading
+Discord. The Ryoku theme follows the bridge's enabled signal automatically.
 
 Midnight and the referenced Font Awesome icon are third-party works; see
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
@@ -156,7 +169,7 @@ The daemon listens on `127.0.0.1:47616` by default.
 
 ## Tests
 
-Run the portable checks used by CI:
+Run the checks used by CI (the integration installer checks require Matugen and `jq`):
 
 ```bash
 go test -race ./...

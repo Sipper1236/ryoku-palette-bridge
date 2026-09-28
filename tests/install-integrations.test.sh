@@ -9,6 +9,14 @@ fake_bin="$test_root/bin"
 profile_root="$config_root/zen/test.default"
 state_file="$test_root/spicetify-extensions"
 state_root="$test_root/state"
+cache_root="$test_root/cache"
+export XDG_CACHE_HOME="$cache_root"
+command -v matugen >/dev/null || { printf "matugen is required for integration tests\n" >&2; exit 1; }
+mkdir -p "$cache_root/ryoku"
+write_carrier() {
+  jq -n --arg primary "$1" '{colors: (["inverse_primary", "error", "tertiary_container", "on_primary", "tertiary", "primary", "surface_bright", "primary_fixed_dim", "surface", "on_surface", "on_surface_variant", "outline", "surface_variant", "surface_container_high", "surface_container_low"] | map({key: ., value: {default: {hex: (if . == "primary" then $primary else "#123456" end)}}}) | from_entries)}' > "$cache_root/ryoku/matugen-carrier.json"
+}
+write_carrier "#abcdef"
 mkdir -p "$fake_bin" "$config_root/matugen" "$config_root/vesktop/settings" "$profile_root/chrome"
 
 printf '[config]\n\n[templates.existing]\ninput_path = "keep"\noutput_path = "keep"\n' \
@@ -85,7 +93,7 @@ run_vesktop() {
 printf '{"enabledThemes":["custom.theme.css","Ryoku.theme.css","midnight-ryoku.theme.css"]}\n' \
   > "$config_root/vesktop/settings/settings.json"
 quick_css="$config_root/vesktop/settings/quickCss.css"
-printf ':root { --user-before: red; }\n' > "$test_root/custom-before.css"
+printf '@import url("custom.css");\n:root { --user-before: red; }\n' > "$test_root/custom-before.css"
 cp "$test_root/custom-before.css" "$quick_css"
 for _ in 1 2; do run_vesktop install; done
 jq -e '.useQuickCss == true and .enabledThemes == ["custom.theme.css", "Ryoku.theme.css"]' \
@@ -94,8 +102,10 @@ jq -e '.useQuickCss == true and .enabledThemes == ["custom.theme.css", "Ryoku.th
 grep -Fq -- '--ryo-bridge-enabled: 1;' "$overlay/templates/vesktop-colors.css"
 
 printf ':root { --user-after: gold; }\n' > "$test_root/custom-after.css"
+[[ $(head -n 1 "$quick_css") == '@import url("custom.css");' ]]
 grep -Fq -- '--ryo-bridge-enabled: 1;' "$quick_css"
-sed -E 's/\{\{[^}]+\}\}/#abcdef/g' "$project_root/templates/vesktop-colors.css" >> "$quick_css"
+grep -Fq -- '--accent-2: #abcdef;' "$quick_css"
+[[ $(grep -Fc '/* ryoku-palette-bridge:begin */' "$quick_css") == 1 ]]
 cat "$test_root/custom-after.css" >> "$quick_css"
 cat "$test_root/custom-before.css" "$test_root/custom-after.css" > "$test_root/expected.css"
 for _ in 1 2; do run_vesktop remove; done
@@ -106,6 +116,45 @@ cmp "$test_root/expected-noblank.css" "$test_root/actual-noblank.css"
 jq -e '.useQuickCss == true and .enabledThemes == ["custom.theme.css", "Ryoku.theme.css"]' \
   "$config_root/vesktop/settings/settings.json" >/dev/null
 ! grep -Fq '[templates.vesktop]' "$overlay/apps.toml"
+
+# Re-enabling uses the current carrier immediately, preserving custom CSS.
+write_carrier "#fedcba"
+run_vesktop install
+grep -Fq -- '--accent-2: #fedcba;' "$quick_css"
+! grep -Fq -- '--accent-2: #abcdef;' "$quick_css"
+grep -Fq -- '--user-before: red;' "$quick_css"
+grep -Fq -- '--user-after: gold;' "$quick_css"
+run_vesktop remove
+
+# Cold setup creates a complete palette even when QuickCSS does not exist.
+rm "$quick_css"
+run_vesktop install
+grep -Fq -- '--accent-2: #fedcba;' "$quick_css"
+grep -Fq -- '--bg-4: #123456;' "$quick_css"
+! grep -Fq '{{colors.' "$quick_css"
+run_vesktop remove
+
+# Preflight failures must not mutate configuration or ownership state.
+printf ':root { --keep-on-failure: gold; }\n' > "$quick_css"
+cp -a "$config_root" "$test_root/config-before-failure"
+cp -a "$state_root" "$test_root/state-before-failure"
+assert_failure_unchanged() {
+  if run_vesktop install; then
+    printf 'setup unexpectedly succeeded\n' >&2
+    exit 1
+  fi
+  diff -r "$test_root/config-before-failure" "$config_root"
+  diff -r "$test_root/state-before-failure" "$state_root"
+}
+rm "$cache_root/ryoku/matugen-carrier.json"
+assert_failure_unchanged
+printf '{invalid json\n' > "$cache_root/ryoku/matugen-carrier.json"
+assert_failure_unchanged
+write_carrier "#fedcba"
+printf '#!/usr/bin/env bash\nexit 42\n' > "$fake_bin/matugen"
+chmod +x "$fake_bin/matugen"
+assert_failure_unchanged
+rm "$fake_bin/matugen"
 
 # An unmarked palette from the previous release can be safely recognized without
 # treating other user :root blocks as generated content.

@@ -38,7 +38,9 @@ if [[ $* == *list-unit-files* ]]; then
   esac
 fi
 EOF
-chmod +x "$fake_bin/go" "$fake_bin/systemctl"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$fake_bin/ryoku"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$fake_bin/ryogami"
+chmod +x "$fake_bin/go" "$fake_bin/systemctl" "$fake_bin/ryoku" "$fake_bin/ryogami"
 
 (cd "$test_root"
 HOME="$test_root/home" \
@@ -58,5 +60,19 @@ grep -Fxq -- '--user daemon-reload' "$systemctl_log"
 grep -Fxq -- '--user disable --now ryoku-spicetify-palette.service' "$systemctl_log"
 grep -Fxq -- '--user disable --now spiceflow.service' "$systemctl_log"
 ! grep -Fq -- '--user enable --now ryoku-palette-bridge.service' "$systemctl_log"
+
+cmp "$project_root/vesktop/quickcss.sh" \
+  "$test_root/home/.local/share/ryoku/palette-bridge/vesktop/quickcss.sh"
+# Invoke the copied executable outside the checkout to exercise helper lookup.
+mkdir -p "$test_root/home/.config/vesktop/settings"
+printf '/* user css */\n/* ryoku-palette-bridge:begin */\n:root { --ryo-bridge-enabled: 1; }\n/* ryoku-palette-bridge:end */\n' \
+  > "$test_root/home/.config/vesktop/settings/quickCss.css"
+(cd "$test_root"
+HOME="$test_root/home" XDG_CONFIG_HOME="$test_root/home/.config" \
+XDG_STATE_HOME="$test_root/home/.local/state" PATH="$fake_bin:$PATH" \
+  "$test_root/home/.local/bin/ryoku-palette-bridge-remove-integrations" --vesktop
+)
+grep -Fxq '/* user css */' "$test_root/home/.config/vesktop/settings/quickCss.css"
+! grep -Fq -- '--ryo-bridge-enabled' "$test_root/home/.config/vesktop/settings/quickCss.css"
 
 printf 'PASS: core installer migrates legacy services and leaves the canonical unit opt-in\n'

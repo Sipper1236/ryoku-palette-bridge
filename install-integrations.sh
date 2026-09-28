@@ -43,6 +43,24 @@ if ! $want_spotify && ! $want_vesktop && ! $want_zen; then
   exit 2
 fi
 
+# Render before changing any integration state, so a missing/invalid palette
+# cannot leave setup reporting success with only an enabled flag.
+vesktop_rendered=
+if $want_vesktop; then
+  command -v jq >/dev/null || { printf 'jq is required for --vesktop\n' >&2; exit 1; }
+  source "$project_root/vesktop/quickcss.sh"
+  [[ -f "$config_root/vesktop/settings/settings.json" ]] || {
+    printf 'Vesktop settings not found: %s\n' "$config_root/vesktop/settings/settings.json" >&2
+    exit 1
+  }
+  vesktop_temporary=$(mktemp -d)
+  trap 'rm -rf "$vesktop_temporary"' EXIT
+  vesktop_rendered="$vesktop_temporary/palette.css"
+  vesktop_render_palette "$project_root/templates/vesktop-colors.css" \
+    "${XDG_CACHE_HOME:-$HOME/.cache}/ryoku/matugen-carrier.json" "$vesktop_rendered"
+  vesktop_strip_palette "$config_root/vesktop/settings/quickCss.css" "$vesktop_temporary/custom.css" 1
+fi
+
 prepare_matugen_overlay() {
   install -d "$overlay_root/templates"
   if [[ ! -f "$overlay_apps" ]]; then
@@ -64,27 +82,6 @@ record_owned() {
   printf '%s\t%s\n' "$integration" "$path" >> "$temporary"
   install -m 0600 "$temporary" "$ownership_file"
   rm -f "$temporary"
-}
-
-set_vesktop_bridge_enabled() {
-  local css="$config_root/vesktop/settings/quickCss.css" temporary
-  [[ -f "$css" ]] || return 0
-  temporary=$(mktemp)
-  awk '
-    $0 == "/* ryoku-palette-bridge:vesktop-enabled-begin */" && !inside { inside=1; next }
-    inside {
-      if ($0 == "/* ryoku-palette-bridge:vesktop-enabled-end */") inside=0
-      next
-    }
-    { print }
-    END { if (inside) exit 1 }
-  ' "$css" > "$temporary" || { rm -f "$temporary"; return 1; }
-  {
-    cat "$temporary"
-    printf '\n/* ryoku-palette-bridge:vesktop-enabled-begin */\n:root { --ryo-bridge-enabled: 1; }\n/* ryoku-palette-bridge:vesktop-enabled-end */\n'
-  } > "$temporary.next"
-  install -m 0644 "$temporary.next" "$css"
-  rm -f "$temporary" "$temporary.next"
 }
 
 set_matugen_section() {
@@ -142,7 +139,7 @@ if $want_vesktop; then
     "$settings" > "$temporary"
   install -m 0644 "$temporary" "$settings"
   rm -f "$temporary"
-  set_vesktop_bridge_enabled
+  vesktop_write_palette "$config_root/vesktop/settings/quickCss.css" "$vesktop_rendered"
   printf 'Installed the Vesktop live-palette integration.\n'
 fi
 
